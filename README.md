@@ -17,7 +17,7 @@
 Neuro-sama is an AI VTuber created by [Vedal](https://twitch.tv/vedal987) — she's cheerful, curious, endlessly chaotic, and occasionally unhinged in the best way. She **streams**, **sings**, **plays games**, and says whatever crosses her mind.
 
 This site is a fan-made community hub — not affiliated with Vedal or the official Neuro-sama project.
-
+.
 ---
 
 ## ≋ Credits
