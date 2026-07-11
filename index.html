@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="https://cdn.junipercreates.com/marketing-sandbox/images/colored_1763651500692.png" type="image/png">
 <script src="./support.js"></script>
 </head>
 <body>
@@ -301,7 +302,7 @@
   </div>
 </footer>
 </x-dc>
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1440}, &quot;streamStatus&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;auto&quot;, &quot;offline&quot;, &quot;live&quot;], &quot;default&quot;: &quot;auto&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Stream&quot;}, &quot;useRealTwitchChat&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Stream&quot;}, &quot;twitchChannel&quot;: {&quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;vedal987&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Stream&quot;}, &quot;chatCropPx&quot;: {&quot;editor&quot;: &quot;int&quot;, &quot;default&quot;: 145, &quot;min&quot;: 0, &quot;max&quot;: 300, &quot;unit&quot;: &quot;px&quot;, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Stream&quot;}, &quot;scheduleEndpoint&quot;: {&quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;https://karaoke-api.neurosama.dev/api/schedule&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Schedule&quot;}}">
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1440}, &quot;streamStatus&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;auto&quot;, &quot;offline&quot;, &quot;live&quot;], &quot;default&quot;: &quot;auto&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Stream&quot;}, &quot;useRealTwitchChat&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Stream&quot;}, &quot;twitchChannel&quot;: {&quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;vedal987&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Stream&quot;}, &quot;chatCropPx&quot;: {&quot;editor&quot;: &quot;int&quot;, &quot;default&quot;: 145, &quot;min&quot;: 0, &quot;max&quot;: 300, &quot;unit&quot;: &quot;px&quot;, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Stream&quot;}, &quot;scheduleEndpoint&quot;: {&quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;https://karaoke-api.neurosama.dev/api/schedule&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Schedule&quot;}}">
 class Component extends DCLogic {
   state = {
     heroGifIndex: 0,
@@ -316,7 +317,8 @@ class Component extends DCLogic {
     schedule: null,
     showEmbed: false,
     liveDetected: false,
-    streamTitle: ''
+    streamTitle: '',
+    realViewers: null
   };
 
   gifs = ['images/unnamed.gif', 'images/Nuru-4x1.gif', 'images/Nuru-4x2.gif', 'images/Nuru-4x3.gif', 'images/Nuru-4x4.gif', 'images/Nuru-4x5.gif'];
@@ -362,20 +364,22 @@ class Component extends DCLogic {
     window.addEventListener('scroll', this.onScroll, { passive: true });
     this.onScroll();
 
-    // fake chat
-    let i = 0;
-    const seed = [];
-    for (let k = 0; k < 5; k++) seed.push(this.chatPool[k]);
-    this.setState({ chatMessages: seed });
-    i = 5;
-    this.chatTimer = setInterval(() => {
-      const msg = this.chatPool[i % this.chatPool.length];
-      i++;
-      this.setState((s) => ({
-        chatMessages: [...s.chatMessages.slice(-7), { ...msg, key: Date.now() }],
-        viewers: Math.max(18000, s.viewers + Math.round((Math.random() - 0.45) * 120))
-      }));
-    }, 2400);
+    // fake chat — only when the real Twitch chat embed is disabled
+    if (this.props.useRealTwitchChat !== true) {
+      let i = 0;
+      const seed = [];
+      for (let k = 0; k < 5; k++) seed.push(this.chatPool[k]);
+      this.setState({ chatMessages: seed });
+      i = 5;
+      this.chatTimer = setInterval(() => {
+        const msg = this.chatPool[i % this.chatPool.length];
+        i++;
+        this.setState((s) => ({
+          chatMessages: [...s.chatMessages.slice(-7), { ...msg, key: Date.now() }],
+          viewers: Math.max(18000, s.viewers + Math.round((Math.random() - 0.45) * 120))
+        }));
+      }, 2400);
+    }
 
     this.fetchQuotes();
     this.fetchArt();
@@ -403,10 +407,15 @@ class Component extends DCLogic {
       const up = await (await fetch('https://decapi.me/twitch/uptime/' + channel)).text();
       const live = !/offline/i.test(up);
       let title = '';
+      let realViewers = null;
       if (live) {
         try { title = (await (await fetch('https://decapi.me/twitch/status/' + channel)).text()).trim(); } catch (e) { /* ignore */ }
+        try {
+          const vc = parseInt((await (await fetch('https://decapi.me/twitch/viewercount/' + channel)).text()).trim(), 10);
+          if (!isNaN(vc)) realViewers = vc;
+        } catch (e) { /* ignore */ }
       }
-      this.setState({ liveDetected: live, streamTitle: title });
+      this.setState({ liveDetected: live, streamTitle: title, realViewers });
     } catch (e) {
       console.warn('live check failed', e);
     }
@@ -579,7 +588,9 @@ class Component extends DCLogic {
       isLive,
       isOffline: !isLive,
       statusLine: isLive ? (this.state.streamTitle || 'She is LIVE right now!') : 'Currently offline \u2014 touching grass (allegedly)',
-      viewerLabel: this.fmt(this.state.viewers) + ' watching',
+      viewerLabel: useRealChat
+        ? (isLive ? (this.state.realViewers != null ? this.fmt(this.state.realViewers) + ' watching' : 'live now') : 'offline')
+        : this.fmt(this.state.viewers) + ' watching',
       quoteItems,
       chatMessages: this.state.chatMessages,
       useRealChat: useRealChat,
